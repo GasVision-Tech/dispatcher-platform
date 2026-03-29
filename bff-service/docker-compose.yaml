@@ -1,0 +1,11 @@
+services:
+  bff:
+    build: .
+    container_name: gasvision_bff
+    environment:
+      - database_url=sqlite:///./bff.db
+      - jwt_secret=dev-secret-key
+      - event_service_base_url=http://host.docker.internal:8000
+      - cors_origins=http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "8010:8010"

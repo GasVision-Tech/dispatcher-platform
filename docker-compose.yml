@@ -1,0 +1,83 @@
+services:
+  event-db:
+    image: postgres:16
+    container_name: gasvision_event_db
+    environment:
+      POSTGRES_USER: event_user
+      POSTGRES_PASSWORD: event_pass
+      POSTGRES_DB: event_db
+    volumes:
+      - event_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U event_user -d event_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  event-service:
+    build:
+      context: ../Event-service
+    container_name: gasvision_event_service
+    environment:
+      db_host: event-db
+      db_port: 5432
+      db_name: event_db
+      db_user: event_user
+      db_password: event_pass
+    depends_on:
+      event-db:
+        condition: service_healthy
+
+  bff-db:
+    image: postgres:16
+    container_name: gasvision_bff_db
+    environment:
+      POSTGRES_USER: bff_user
+      POSTGRES_PASSWORD: bff_pass
+      POSTGRES_DB: bff_db
+    volumes:
+      - bff_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bff_user -d bff_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  bff:
+    build:
+      context: ./bff-service
+    container_name: gasvision_bff
+    environment:
+      database_url: postgresql+psycopg2://bff_user:bff_pass@bff-db:5432/bff_db
+      jwt_secret: dev-secret-key
+      event_service_base_url: http://event-service:8000
+      cors_origins: http://localhost,http://127.0.0.1
+    depends_on:
+      bff-db:
+        condition: service_healthy
+      event-service:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: gasvision_frontend
+    depends_on:
+      - bff
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: gasvision_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - bff
+
+volumes:
+  event_pgdata:
+  bff_pgdata:
