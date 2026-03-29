@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8010";
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8010").replace(/\/$/, "");
 
 function getToken() {
   return localStorage.getItem("gv_token");
@@ -32,22 +32,22 @@ async function request(path, options = {}) {
 }
 
 export async function login(email, password) {
-  return request("/api/auth/login", {
+  return request("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password })
   });
 }
 
 export async function getMe() {
-  return request("/api/auth/me");
+  return request("/auth/me");
 }
 
 export async function getStations() {
-  return request("/api/stations");
+  return request("/stations");
 }
 
 export async function getDashboardSummary() {
-  return request("/api/dashboard/summary");
+  return request("/dashboard/summary");
 }
 
 export async function getEvents(params = {}) {
@@ -58,15 +58,15 @@ export async function getEvents(params = {}) {
     }
   });
   const query = searchParams.toString();
-  return request(`/api/events${query ? `?${query}` : ""}`);
+  return request(`/events${query ? `?${query}` : ""}`);
 }
 
 export async function getEvent(id) {
-  return request(`/api/events/${id}`);
+  return request(`/events/${id}`);
 }
 
 export async function patchEventStatus(id, status) {
-  return request(`/api/events/${id}/status`, {
+  return request(`/events/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status })
   });

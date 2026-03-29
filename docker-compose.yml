@@ -24,6 +24,8 @@ services:
       db_name: event_db
       db_user: event_user
       db_password: event_pass
+    ports:
+      - "8000:8000"
     depends_on:
       event-db:
         condition: service_healthy
@@ -52,6 +54,8 @@ services:
       jwt_secret: dev-secret-key
       event_service_base_url: http://event-service:8000
       cors_origins: http://localhost,http://127.0.0.1
+    ports:
+      - "8010:8010"
     depends_on:
       bff-db:
         condition: service_healthy
