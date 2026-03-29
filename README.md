@@ -21,11 +21,29 @@
 docker compose up --build
 ```
 
+Или через `Makefile`:
+
+```bash
+make up
+```
+
 После старта:
 
 - общий вход через NGINX: `http://localhost:8080`
 - BFF внутри сети docker: `http://bff:8010`
 - Event Service внутри сети docker: `http://event-service:8000`
+
+## Полезные команды
+
+```bash
+make up
+make down
+make build
+make rebuild
+make logs
+make ps
+make clean
+```
 
 ## Схема запросов
 
