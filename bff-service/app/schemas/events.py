@@ -1,6 +1,14 @@
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel
+
+
+class EventStatus(str, Enum):
+    open = "open"
+    in_work = "in_work"
+    resolved = "resolved"
+    false_alarm = "false_alarm"
 
 
 class EventMediaOut(BaseModel):
@@ -31,7 +39,7 @@ class EventDetail(EventListItem):
 
 
 class EventStatusPatch(BaseModel):
-    status: str
+    status: EventStatus
 
 
 class DashboardSummary(BaseModel):

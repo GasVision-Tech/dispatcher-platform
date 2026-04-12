@@ -15,6 +15,8 @@ const demoCredentials = {
   password: "demo123"
 };
 
+const AUTO_REFRESH_MS = 5000;
+
 function fmtDateTime(value) {
   return new Date(value).toLocaleString("ru-RU", {
     day: "2-digit",
@@ -63,6 +65,45 @@ export default function App() {
   });
   const [loading, setLoading] = useState(false);
 
+  async function loadBootstrapData() {
+    const [me, stationsData, summaryData, eventsData] = await Promise.all([
+      getMe(),
+      getStations(),
+      getDashboardSummary(),
+      getEvents()
+    ]);
+
+    setUser(me);
+    setStations(stationsData);
+    setSummary(summaryData);
+    setDashboardEvents(eventsData.slice(0, 15));
+    setHistoryEvents(eventsData);
+  }
+
+  async function refreshDashboardData() {
+    const [summaryData, eventsData] = await Promise.all([
+      getDashboardSummary(),
+      getEvents(dashboardFilters)
+    ]);
+
+    setSummary(summaryData);
+    setDashboardEvents(eventsData.slice(0, 15));
+  }
+
+  async function refreshHistoryData() {
+    const data = await getEvents(historyFilters);
+    setHistoryEvents(data);
+  }
+
+  async function refreshSelectedEvent() {
+    if (!selectedEvent) {
+      return;
+    }
+
+    const data = await getEvent(selectedEvent.id);
+    setSelectedEvent(data);
+  }
+
   useEffect(() => {
     if (!token) {
       return;
@@ -71,17 +112,7 @@ export default function App() {
     async function boot() {
       try {
         setLoading(true);
-        const [me, stationsData, summaryData, eventsData] = await Promise.all([
-          getMe(),
-          getStations(),
-          getDashboardSummary(),
-          getEvents()
-        ]);
-        setUser(me);
-        setStations(stationsData);
-        setSummary(summaryData);
-        setDashboardEvents(eventsData.slice(0, 15));
-        setHistoryEvents(eventsData);
+        await loadBootstrapData();
       } catch (error) {
         localStorage.removeItem("gv_token");
         setToken(null);
@@ -98,12 +129,7 @@ export default function App() {
       return;
     }
 
-    async function refreshHistory() {
-      const data = await getEvents(historyFilters);
-      setHistoryEvents(data);
-    }
-
-    refreshHistory().catch(() => {});
+    refreshHistoryData().catch(() => {});
   }, [token, historyFilters]);
 
   useEffect(() => {
@@ -111,13 +137,48 @@ export default function App() {
       return;
     }
 
-    async function refreshDashboard() {
-      const data = await getEvents(dashboardFilters);
-      setDashboardEvents(data.slice(0, 15));
+    refreshDashboardData().catch(() => {});
+  }, [token, dashboardFilters]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
     }
 
-    refreshDashboard().catch(() => {});
-  }, [token, dashboardFilters]);
+    let isStopped = false;
+
+    async function refreshAll() {
+      try {
+        const tasks = [refreshDashboardData(), refreshHistoryData()];
+        if (selectedEvent) {
+          tasks.push(refreshSelectedEvent());
+        }
+        await Promise.all(tasks);
+      } catch (error) {
+        if (isStopped) {
+          return;
+        }
+        if (error.message === "auth") {
+          localStorage.removeItem("gv_token");
+          setToken(null);
+        }
+      }
+    }
+
+    refreshAll().catch(() => {});
+
+    const intervalId = window.setInterval(() => {
+      if (document.hidden) {
+        return;
+      }
+      refreshAll().catch(() => {});
+    }, AUTO_REFRESH_MS);
+
+    return () => {
+      isStopped = true;
+      window.clearInterval(intervalId);
+    };
+  }, [token, dashboardFilters, historyFilters, selectedEvent?.id]);
 
   const stationOptions = useMemo(
     () => stations.map((station) => ({ value: station.station_code, label: station.name })),
