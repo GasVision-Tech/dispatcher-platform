@@ -32,6 +32,7 @@ class EventListItem(BaseModel):
     updated_at: datetime
     preview_image_url: str | None
     clip_url: str | None
+    last_status_changed_by_name: str | None = None
 
 
 class EventDetail(EventListItem):

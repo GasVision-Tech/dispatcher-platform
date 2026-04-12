@@ -25,8 +25,26 @@ def _station_map_for_user(db: Session, user_id: int) -> dict[str, Station]:
     return {station.station_code: station for station in stations}
 
 
-def _adapt_event(event: dict, station_map: dict[str, Station]) -> EventListItem:
+def _user_map_for_events(db: Session, events: list[dict]) -> dict[int, User]:
+    user_ids = {
+        event.get("user_id_who_changed_status")
+        for event in events
+        if event.get("user_id_who_changed_status") is not None
+    }
+    if not user_ids:
+        return {}
+
+    users = db.query(User).filter(User.id.in_(user_ids)).all()
+    return {user.id: user for user in users}
+
+
+def _adapt_event(event: dict, station_map: dict[str, Station], user_map: dict[int, User]) -> EventListItem:
     station = station_map.get(event["station_code"])
+    user_id_who_changed_status = event.get("user_id_who_changed_status")
+    last_status_changed_by_name = None
+    if user_id_who_changed_status is not None:
+        user = user_map.get(user_id_who_changed_status)
+        last_status_changed_by_name = user.full_name if user else f"User #{user_id_who_changed_status}"
     preview_image_url = None
     clip_url = None
     media = event.get("media", [])
@@ -49,6 +67,7 @@ def _adapt_event(event: dict, station_map: dict[str, Station]) -> EventListItem:
         updated_at=event["updated_at"],
         preview_image_url=preview_image_url,
         clip_url=clip_url,
+        last_status_changed_by_name=last_status_changed_by_name,
     )
 
 
@@ -75,7 +94,8 @@ async def list_events(
         offset=0,
     )
 
-    items = [_adapt_event(event, station_map) for event in raw_events]
+    user_map = _user_map_for_events(db, raw_events)
+    items = [_adapt_event(event, station_map, user_map) for event in raw_events]
     if source:
         items = [item for item in items if item.source == source]
     if search:
@@ -98,7 +118,8 @@ async def get_event(
     if event["station_code"] not in station_map:
         raise HTTPException(status_code=404, detail="event not found")
 
-    base = _adapt_event(event, station_map)
+    user_map = _user_map_for_events(db, [event])
+    base = _adapt_event(event, station_map, user_map)
     return EventDetail(**base.model_dump(), media=event.get("media", []))
 
 
@@ -121,7 +142,8 @@ async def patch_event_status(
             "user_id_who_changed_status": current_user.id,
         },
     )
-    base = _adapt_event(patched, station_map)
+    user_map = _user_map_for_events(db, [patched])
+    base = _adapt_event(patched, station_map, user_map)
     return EventDetail(**base.model_dump(), media=patched.get("media", []))
 
 

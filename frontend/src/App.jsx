@@ -41,6 +41,21 @@ function severityBadge(severity) {
   return <span className={`badge s-${severity}`}>{severity.toUpperCase()}</span>;
 }
 
+function statusLabel(status) {
+  const labels = {
+    open: "Открыт",
+    in_work: "В работе",
+    resolved: "Решён",
+    false_alarm: "Ложное"
+  };
+
+  return labels[status] || status;
+}
+
+function statusBadge(status) {
+  return <span className={`badge status-pill status-${status}`}>{statusLabel(status)}</span>;
+}
+
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem("gv_token"));
   const [user, setUser] = useState(null);
@@ -64,6 +79,21 @@ export default function App() {
     search: ""
   });
   const [loading, setLoading] = useState(false);
+  const [connectionState, setConnectionState] = useState("online");
+
+  function markOnline() {
+    setConnectionState("online");
+  }
+
+  function handleRequestError(error) {
+    if (error?.message === "auth") {
+      localStorage.removeItem("gv_token");
+      setToken(null);
+      return;
+    }
+
+    setConnectionState("offline");
+  }
 
   async function loadBootstrapData() {
     const [me, stationsData, summaryData, eventsData] = await Promise.all([
@@ -78,6 +108,7 @@ export default function App() {
     setSummary(summaryData);
     setDashboardEvents(eventsData.slice(0, 15));
     setHistoryEvents(eventsData);
+    markOnline();
   }
 
   async function refreshDashboardData() {
@@ -88,11 +119,13 @@ export default function App() {
 
     setSummary(summaryData);
     setDashboardEvents(eventsData.slice(0, 15));
+    markOnline();
   }
 
   async function refreshHistoryData() {
     const data = await getEvents(historyFilters);
     setHistoryEvents(data);
+    markOnline();
   }
 
   async function refreshSelectedEvent() {
@@ -102,6 +135,7 @@ export default function App() {
 
     const data = await getEvent(selectedEvent.id);
     setSelectedEvent(data);
+    markOnline();
   }
 
   useEffect(() => {
@@ -114,8 +148,7 @@ export default function App() {
         setLoading(true);
         await loadBootstrapData();
       } catch (error) {
-        localStorage.removeItem("gv_token");
-        setToken(null);
+        handleRequestError(error);
       } finally {
         setLoading(false);
       }
@@ -158,10 +191,7 @@ export default function App() {
         if (isStopped) {
           return;
         }
-        if (error.message === "auth") {
-          localStorage.removeItem("gv_token");
-          setToken(null);
-        }
+        handleRequestError(error);
       }
     }
 
@@ -192,7 +222,9 @@ export default function App() {
       const data = await login(loginForm.email, loginForm.password);
       localStorage.setItem("gv_token", data.access_token);
       setToken(data.access_token);
+      markOnline();
     } catch (error) {
+      handleRequestError(error);
       setLoginError("Не удалось войти. Проверьте email и пароль.");
     }
   }
@@ -201,6 +233,7 @@ export default function App() {
     const data = await getEvent(id);
     setSelectedEvent(data);
     setPage(nextPage ?? "event");
+    markOnline();
   }
 
   async function handleStatusChange(status) {
@@ -211,6 +244,7 @@ export default function App() {
     setSelectedEvent(updated);
     setDashboardEvents((items) => items.map((item) => (item.id === updated.id ? updated : item)));
     setHistoryEvents((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+    markOnline();
   }
 
   function logout() {
@@ -227,9 +261,10 @@ export default function App() {
         <div className="login-card">
           <div className="brand">
             <div className="logo">GV</div>
-            <div>
+            <div className="brand-copy">
+              <span className="eyebrow">Dispatcher Platform</span>
               <h1>gasvision.ru — Панель диспетчера</h1>
-              <p>Прототип BFF + frontend для тестирования сценариев диспетчера.</p>
+              <p>Дружелюбная рабочая панель для просмотра событий, смены статусов и быстрой реакции без лишних переходов.</p>
             </div>
           </div>
 
@@ -277,6 +312,13 @@ export default function App() {
           </div>
         </div>
         <div className="hdr-right">
+          <div
+            className={`connection-indicator ${connectionState}`}
+            aria-label={connectionState === "online" ? "Онлайн" : "Оффлайн"}
+          >
+            <span className="connection-dot" />
+            <span className="connection-tooltip">{connectionState === "online" ? "Онлайн" : "Оффлайн"}</span>
+          </div>
           <div className="pill">
             <span>Диспетчер:</span>
             <b>{user?.full_name}</b>
@@ -366,18 +408,28 @@ export default function App() {
                         <th>Описание</th>
                         <th>Станция</th>
                         <th>Критичность</th>
+                        <th />
                       </tr>
                     </thead>
                     <tbody>
-                      {dashboardEvents.map((event) => (
-                        <tr key={event.id} className="clickable" onClick={() => openEvent(event.id, "event")}>
-                          <td>{fmtTime(event.created_at)}</td>
-                          <td>{sourceBadge(event.source)}</td>
-                          <td>{event.title}</td>
-                          <td>{event.station_name}</td>
-                          <td>{severityBadge(event.severity)}</td>
+                      {dashboardEvents.length ? (
+                        dashboardEvents.map((event) => (
+                          <tr key={event.id} className="clickable table-row" onClick={() => openEvent(event.id, "event")}>
+                            <td>{fmtTime(event.created_at)}</td>
+                            <td>{sourceBadge(event.source)}</td>
+                            <td>{event.title}</td>
+                            <td>{event.station_name}</td>
+                            <td>{severityBadge(event.severity)}</td>
+                            <td className="row-action">→</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="6" className="empty-cell">
+                            События не найдены
+                          </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -437,19 +489,29 @@ export default function App() {
                         <th>Станция</th>
                         <th>Критичность</th>
                         <th>Статус</th>
+                        <th />
                       </tr>
                     </thead>
                     <tbody>
-                      {historyEvents.map((event) => (
-                        <tr key={event.id} className="clickable" onClick={() => openEvent(event.id, "event")}>
-                          <td>{fmtDateTime(event.created_at)}</td>
-                          <td>{sourceBadge(event.source)}</td>
-                          <td>{event.title}</td>
-                          <td>{event.station_name}</td>
-                          <td>{severityBadge(event.severity)}</td>
-                          <td>{event.status}</td>
+                      {historyEvents.length ? (
+                        historyEvents.map((event) => (
+                          <tr key={event.id} className="clickable table-row" onClick={() => openEvent(event.id, "event")}>
+                            <td>{fmtDateTime(event.created_at)}</td>
+                            <td>{sourceBadge(event.source)}</td>
+                            <td>{event.title}</td>
+                            <td>{event.station_name}</td>
+                            <td>{severityBadge(event.severity)}</td>
+                            <td>{statusBadge(event.status)}</td>
+                            <td className="row-action">→</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="7" className="empty-cell">
+                            События не найдены
+                          </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -495,7 +557,9 @@ export default function App() {
                 <div className="detail-left">
                   <div className="card">
                     <div className="card-header">
-                      <h2>{selectedEvent.title}</h2>
+                      <div>
+                        <h2>{selectedEvent.title}</h2>
+                      </div>
                       <div className="meta">{fmtDateTime(selectedEvent.created_at)}</div>
                     </div>
                     <div className="card-body">
@@ -511,24 +575,32 @@ export default function App() {
                         <div className="k">Камера</div>
                         <div>{selectedEvent.camera_code || "—"}</div>
                         <div className="k">Статус</div>
-                        <div>{selectedEvent.status}</div>
+                        <div>{statusBadge(selectedEvent.status)}</div>
+                        <div className="k">Последний оператор</div>
+                        <div>{selectedEvent.last_status_changed_by_name || "Статус ещё не меняли"}</div>
                       </div>
                     </div>
                   </div>
                   <div className="card">
                     <div className="card-header">
                       <h2>Медиа</h2>
-                      <div className="meta">image / clip</div>
+                      <div className="meta">{selectedEvent.media.length} файлов</div>
                     </div>
                     <div className="card-body">
-                      <div className="media-list">
-                        <div>
-                          <b>Preview image:</b> {selectedEvent.preview_image_url || "нет"}
+                      {selectedEvent.preview_image_url || selectedEvent.clip_url ? (
+                        <div className="media-summary-grid">
+                          <div className="media-summary-card">
+                            <div className="media-summary-label">Preview image</div>
+                            <div className="media-summary-value">{selectedEvent.preview_image_url || "Не прикреплено"}</div>
+                          </div>
+                          <div className="media-summary-card">
+                            <div className="media-summary-label">Clip</div>
+                            <div className="media-summary-value">{selectedEvent.clip_url || "Ещё не готов"}</div>
+                          </div>
                         </div>
-                        <div>
-                          <b>Clip:</b> {selectedEvent.clip_url || "еще не готов"}
-                        </div>
-                      </div>
+                      ) : (
+                        <div className="empty-state">Медиа пока не прикреплены.</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -537,18 +609,30 @@ export default function App() {
                     <div className="card-header">
                       <h2>Смена статуса</h2>
                     </div>
-                    <div className="card-body action-row">
-                      <button className="btn secondary" onClick={() => handleStatusChange("open")}>
-                        OPEN
+                    <div className="card-body action-row action-grid">
+                      <button
+                        className={`btn secondary status-btn ${selectedEvent.status === "open" ? "active" : ""}`}
+                        onClick={() => handleStatusChange("open")}
+                      >
+                        Открыт
                       </button>
-                      <button className="btn secondary" onClick={() => handleStatusChange("in_work")}>
-                        IN WORK
+                      <button
+                        className={`btn secondary status-btn ${selectedEvent.status === "in_work" ? "active" : ""}`}
+                        onClick={() => handleStatusChange("in_work")}
+                      >
+                        В работе
                       </button>
-                      <button className="btn secondary" onClick={() => handleStatusChange("resolved")}>
-                        RESOLVED
+                      <button
+                        className={`btn secondary status-btn ${selectedEvent.status === "resolved" ? "active" : ""}`}
+                        onClick={() => handleStatusChange("resolved")}
+                      >
+                        Решён
                       </button>
-                      <button className="btn secondary" onClick={() => handleStatusChange("false_alarm")}>
-                        FALSE ALARM
+                      <button
+                        className={`btn secondary status-btn ${selectedEvent.status === "false_alarm" ? "active" : ""}`}
+                        onClick={() => handleStatusChange("false_alarm")}
+                      >
+                        Ложное
                       </button>
                     </div>
                   </div>
@@ -558,14 +642,16 @@ export default function App() {
                     </div>
                     <div className="card-body">
                       {selectedEvent.media.length ? (
-                        selectedEvent.media.map((item, index) => (
-                          <div key={`${item.kind}-${index}`} className="media-item">
-                            <div>{item.kind}</div>
-                            <div className="muted">{item.s3_url}</div>
-                          </div>
-                        ))
+                        <div className="media-grid">
+                          {selectedEvent.media.map((item, index) => (
+                            <div key={`${item.kind}-${index}`} className="media-item">
+                              <div className="media-kind">{item.kind}</div>
+                              <div className="media-url">{item.s3_url}</div>
+                            </div>
+                          ))}
+                        </div>
                       ) : (
-                        <div className="muted">Медиа пока не прикреплены.</div>
+                        <div className="empty-state">Медиа пока не прикреплены.</div>
                       )}
                     </div>
                   </div>
