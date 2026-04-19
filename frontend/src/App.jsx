@@ -56,6 +56,17 @@ function statusBadge(status) {
   return <span className={`badge status-pill status-${status}`}>{statusLabel(status)}</span>;
 }
 
+function compactMediaLabel(event) {
+  const mediaCount = event?.media?.length ?? 0;
+  if (mediaCount) {
+    return `${mediaCount} медиа`;
+  }
+  if (event?.preview_image_url || event?.clip_url) {
+    return "Медиа есть";
+  }
+  return "Без медиа";
+}
+
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem("gv_token"));
   const [user, setUser] = useState(null);
@@ -217,6 +228,15 @@ export default function App() {
   const openEventsCount = historyEvents.filter((event) => event.status === "open").length;
   const inWorkEventsCount = historyEvents.filter((event) => event.status === "in_work").length;
   const onlineStationsCount = stations.filter((station) => station.status === "online").length;
+  const activeEvent = selectedEvent;
+
+  useEffect(() => {
+    if (page !== "dashboard" || selectedEvent || !dashboardEvents.length) {
+      return;
+    }
+
+    openEvent(dashboardEvents[0].id, "dashboard").catch(() => {});
+  }, [page, selectedEvent, dashboardEvents]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -365,9 +385,9 @@ export default function App() {
             <section className="page active">
               <div className="page-heading">
                 <div>
-                  <span className="eyebrow compact">Live operations</span>
-                  <h1>Оперативная сводка</h1>
-                  <p>Новые события, критичность и очередь действий по доступным станциям.</p>
+                  <span className="eyebrow compact">Dispatcher cockpit</span>
+                  <h1>Рабочее место диспетчера</h1>
+                  <p>Очередь событий, карточка контекста и быстрые действия на одном экране.</p>
                 </div>
                 <div className="page-heading-side">
                   <span className="meta">В работе</span>
@@ -375,102 +395,172 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="kpi-row">
-                <div className="kpi kpi-primary">
-                  <div className="label">Событий за 24 часа</div>
-                  <div className="value">{summary?.events_24h ?? 0}</div>
-                </div>
-                <div className="kpi">
-                  <div className="label">Открытые события</div>
-                  <div className="value">{openEventsCount}</div>
-                </div>
-                <div className="kpi">
-                  <div className="label">Станции онлайн</div>
-                  <div className="value">
-                    {onlineStationsCount}<span>/{stations.length}</span>
+              <div className="cockpit-shell">
+                <aside className="cockpit-queue card">
+                  <div className="cockpit-panel-head">
+                    <div>
+                      <h2>Очередь</h2>
+                      <span>{dashboardEvents.length} активных</span>
+                    </div>
+                    <b>{summary?.high_24h ?? 0}</b>
                   </div>
-                </div>
-                <div className="kpi kpi-danger">
-                  <div className="label">Высокая критичность</div>
-                  <div className="value">{summary?.high_24h ?? 0}</div>
-                </div>
-              </div>
 
-              <div className="card table-card">
-                <div className="card-header">
-                  <div>
-                    <h2>Оперативная очередь</h2>
-                    <div className="meta">Последние 15 событий</div>
+                  <div className="cockpit-filters">
+                    <input
+                      placeholder="Поиск события"
+                      value={dashboardFilters.search}
+                      onChange={(event) => setDashboardFilters((state) => ({ ...state, search: event.target.value }))}
+                    />
+                    <div className="filter-row">
+                      <select
+                        value={dashboardFilters.source}
+                        onChange={(event) => setDashboardFilters((state) => ({ ...state, source: event.target.value }))}
+                      >
+                        <option value="">Все типы</option>
+                        <option value="cv">CV</option>
+                        <option value="ai">AI</option>
+                      </select>
+                      <select
+                        value={dashboardFilters.severity}
+                        onChange={(event) => setDashboardFilters((state) => ({ ...state, severity: event.target.value }))}
+                      >
+                        <option value="">Все уровни</option>
+                        <option value="high">HIGH</option>
+                        <option value="med">MED</option>
+                        <option value="low">LOW</option>
+                      </select>
+                    </div>
                   </div>
-                </div>
-                <div className="card-body toolbar">
-                  <input
-                    placeholder="Поиск"
-                    value={dashboardFilters.search}
-                    onChange={(event) => setDashboardFilters((state) => ({ ...state, search: event.target.value }))}
-                  />
-                  <select
-                    value={dashboardFilters.source}
-                    onChange={(event) => setDashboardFilters((state) => ({ ...state, source: event.target.value }))}
-                  >
-                    <option value="">Все типы</option>
-                    <option value="cv">CV</option>
-                    <option value="ai">AI</option>
-                  </select>
-                  <select
-                    value={dashboardFilters.severity}
-                    onChange={(event) => setDashboardFilters((state) => ({ ...state, severity: event.target.value }))}
-                  >
-                    <option value="">Любая критичность</option>
-                    <option value="high">HIGH</option>
-                    <option value="med">MED</option>
-                    <option value="low">LOW</option>
-                  </select>
-                </div>
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Время</th>
-                        <th>Тип</th>
-                        <th>Описание</th>
-                        <th>Станция</th>
-                        <th>Критичность</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dashboardEvents.length ? (
-                        dashboardEvents.map((event) => (
-                          <tr
-                            key={event.id}
-                            className={`clickable table-row severity-row-${event.severity}`}
-                            onClick={() => openEvent(event.id, "event")}
-                          >
-                            <td>{fmtTime(event.created_at)}</td>
-                            <td>{sourceBadge(event.source)}</td>
-                            <td>
-                              <div className="event-title">{event.title}</div>
-                              <div className="event-subtitle">{event.camera_code || "Камера не указана"}</div>
-                            </td>
-                            <td>
-                              <div className="event-title">{event.station_name}</div>
-                              <div className="event-subtitle">{event.station_code}</div>
-                            </td>
-                            <td>{severityBadge(event.severity)}</td>
-                            <td className="row-action">→</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="6" className="empty-cell">
-                            События не найдены
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+
+                  <div className="event-queue-list">
+                    {dashboardEvents.length ? (
+                      dashboardEvents.map((event) => (
+                        <button
+                          key={event.id}
+                          className={`queue-item severity-${event.severity} ${activeEvent?.id === event.id ? "active" : ""}`}
+                          onClick={() => openEvent(event.id, "dashboard")}
+                        >
+                          <span className="queue-time">{fmtTime(event.created_at)}</span>
+                          <span className="queue-main">
+                            <span className="queue-title">{event.title}</span>
+                            <span className="queue-meta">{event.station_name} · {event.camera_code || "камера не указана"}</span>
+                          </span>
+                          <span className="queue-badges">
+                            {severityBadge(event.severity)}
+                            {sourceBadge(event.source)}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="empty-state">События не найдены</div>
+                    )}
+                  </div>
+                </aside>
+
+                <section className="cockpit-stage card">
+                  {activeEvent ? (
+                    <>
+                      <div className="stage-header">
+                        <div>
+                          <span className="eyebrow compact">Event #{activeEvent.id}</span>
+                          <h2>{activeEvent.title}</h2>
+                          <p>{activeEvent.station_name} · {activeEvent.camera_code || "Камера не указана"}</p>
+                        </div>
+                        <div className="detail-status-stack">
+                          {statusBadge(activeEvent.status)}
+                          {severityBadge(activeEvent.severity)}
+                        </div>
+                      </div>
+
+                      <div className="stage-media">
+                        <div className="stage-media-icon">GV</div>
+                        <div>
+                          <span>Медиа контекст</span>
+                          <b>{compactMediaLabel(activeEvent)}</b>
+                          <p>{activeEvent.preview_image_url || activeEvent.clip_url || "Файлы пока не прикреплены"}</p>
+                        </div>
+                      </div>
+
+                      <div className="stage-grid">
+                        <div>
+                          <span>Создано</span>
+                          <b>{fmtDateTime(activeEvent.created_at)}</b>
+                        </div>
+                        <div>
+                          <span>Источник</span>
+                          <b>{activeEvent.source.toUpperCase()}</b>
+                        </div>
+                        <div>
+                          <span>Станция</span>
+                          <b>{activeEvent.station_code}</b>
+                        </div>
+                        <div>
+                          <span>Оператор</span>
+                          <b>{activeEvent.last_status_changed_by_name || "Не назначен"}</b>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="empty-state">События не найдены</div>
+                  )}
+                </section>
+
+                <aside className="cockpit-actions">
+                  <div className="card action-card">
+                    <div className="card-header">
+                      <h2>Быстрый статус</h2>
+                    </div>
+                    <div className="card-body action-row action-grid">
+                      <button
+                        className={`btn secondary status-btn ${activeEvent?.status === "open" ? "active" : ""}`}
+                        disabled={!activeEvent}
+                        onClick={() => handleStatusChange("open")}
+                      >
+                        Открыт
+                      </button>
+                      <button
+                        className={`btn secondary status-btn ${activeEvent?.status === "in_work" ? "active" : ""}`}
+                        disabled={!activeEvent}
+                        onClick={() => handleStatusChange("in_work")}
+                      >
+                        В работе
+                      </button>
+                      <button
+                        className={`btn secondary status-btn ${activeEvent?.status === "resolved" ? "active" : ""}`}
+                        disabled={!activeEvent}
+                        onClick={() => handleStatusChange("resolved")}
+                      >
+                        Решён
+                      </button>
+                      <button
+                        className={`btn secondary status-btn ${activeEvent?.status === "false_alarm" ? "active" : ""}`}
+                        disabled={!activeEvent}
+                        onClick={() => handleStatusChange("false_alarm")}
+                      >
+                        Ложное
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="card cockpit-metrics">
+                    <div>
+                      <span>24 часа</span>
+                      <b>{summary?.events_24h ?? 0}</b>
+                    </div>
+                    <div>
+                      <span>Открыто</span>
+                      <b>{openEventsCount}</b>
+                    </div>
+                    <div>
+                      <span>Станции онлайн</span>
+                      <b>{onlineStationsCount}/{stations.length}</b>
+                    </div>
+                    <div>
+                      <span>AI / CV</span>
+                      <b>{summary?.ai_24h ?? 0}/{summary?.cv_24h ?? 0}</b>
+                    </div>
+                  </div>
+                </aside>
               </div>
             </section>
           ) : null}
