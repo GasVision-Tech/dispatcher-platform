@@ -385,9 +385,9 @@ export default function App() {
             <section className="page active">
               <div className="page-heading">
                 <div>
-                  <span className="eyebrow compact">Dispatcher cockpit</span>
-                  <h1>Рабочее место диспетчера</h1>
-                  <p>Очередь событий, карточка контекста и быстрые действия на одном экране.</p>
+                  <span className="eyebrow compact">Compact ops</span>
+                  <h1>Оперативный экран</h1>
+                  <p>Плотная очередь, быстрый просмотр деталей и смена статуса без лишних переходов.</p>
                 </div>
                 <div className="page-heading-side">
                   <span className="meta">В работе</span>
@@ -395,171 +395,173 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="cockpit-shell">
-                <aside className="cockpit-queue card">
-                  <div className="cockpit-panel-head">
-                    <div>
-                      <h2>Очередь</h2>
-                      <span>{dashboardEvents.length} активных</span>
-                    </div>
-                    <b>{summary?.high_24h ?? 0}</b>
-                  </div>
+              <div className="ops-metrics">
+                <div className="ops-metric primary">
+                  <span>24 часа</span>
+                  <b>{summary?.events_24h ?? 0}</b>
+                </div>
+                <div className="ops-metric">
+                  <span>Открыто</span>
+                  <b>{openEventsCount}</b>
+                </div>
+                <div className="ops-metric">
+                  <span>В работе</span>
+                  <b>{inWorkEventsCount}</b>
+                </div>
+                <div className="ops-metric danger">
+                  <span>High</span>
+                  <b>{summary?.high_24h ?? 0}</b>
+                </div>
+                <div className="ops-metric">
+                  <span>Станции</span>
+                  <b>{onlineStationsCount}/{stations.length}</b>
+                </div>
+              </div>
 
-                  <div className="cockpit-filters">
+              <div className="ops-workspace">
+                <section className="card ops-list">
+                  <div className="card-header">
+                    <div>
+                      <h2>Очередь событий</h2>
+                      <div className="meta">Последние 15 событий</div>
+                    </div>
+                  </div>
+                  <div className="card-body toolbar compact-toolbar">
                     <input
-                      placeholder="Поиск события"
+                      placeholder="Поиск"
                       value={dashboardFilters.search}
                       onChange={(event) => setDashboardFilters((state) => ({ ...state, search: event.target.value }))}
                     />
-                    <div className="filter-row">
-                      <select
-                        value={dashboardFilters.source}
-                        onChange={(event) => setDashboardFilters((state) => ({ ...state, source: event.target.value }))}
-                      >
-                        <option value="">Все типы</option>
-                        <option value="cv">CV</option>
-                        <option value="ai">AI</option>
-                      </select>
-                      <select
-                        value={dashboardFilters.severity}
-                        onChange={(event) => setDashboardFilters((state) => ({ ...state, severity: event.target.value }))}
-                      >
-                        <option value="">Все уровни</option>
-                        <option value="high">HIGH</option>
-                        <option value="med">MED</option>
-                        <option value="low">LOW</option>
-                      </select>
-                    </div>
+                    <select
+                      value={dashboardFilters.source}
+                      onChange={(event) => setDashboardFilters((state) => ({ ...state, source: event.target.value }))}
+                    >
+                      <option value="">Все типы</option>
+                      <option value="cv">CV</option>
+                      <option value="ai">AI</option>
+                    </select>
+                    <select
+                      value={dashboardFilters.severity}
+                      onChange={(event) => setDashboardFilters((state) => ({ ...state, severity: event.target.value }))}
+                    >
+                      <option value="">Все уровни</option>
+                      <option value="high">HIGH</option>
+                      <option value="med">MED</option>
+                      <option value="low">LOW</option>
+                    </select>
                   </div>
-
-                  <div className="event-queue-list">
-                    {dashboardEvents.length ? (
-                      dashboardEvents.map((event) => (
-                        <button
-                          key={event.id}
-                          className={`queue-item severity-${event.severity} ${activeEvent?.id === event.id ? "active" : ""}`}
-                          onClick={() => openEvent(event.id, "dashboard")}
-                        >
-                          <span className="queue-time">{fmtTime(event.created_at)}</span>
-                          <span className="queue-main">
-                            <span className="queue-title">{event.title}</span>
-                            <span className="queue-meta">{event.station_name} · {event.camera_code || "камера не указана"}</span>
-                          </span>
-                          <span className="queue-badges">
-                            {severityBadge(event.severity)}
-                            {sourceBadge(event.source)}
-                          </span>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="empty-state">События не найдены</div>
-                    )}
+                  <div className="table-wrap">
+                    <table className="compact-table">
+                      <thead>
+                        <tr>
+                          <th>Время</th>
+                          <th>Событие</th>
+                          <th>Станция</th>
+                          <th>Уровень</th>
+                          <th>Статус</th>
+                          <th />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dashboardEvents.length ? (
+                          dashboardEvents.map((event) => (
+                            <tr
+                              key={event.id}
+                              className={`clickable table-row severity-row-${event.severity} ${activeEvent?.id === event.id ? "selected-row" : ""}`}
+                              onClick={() => openEvent(event.id, "dashboard")}
+                            >
+                              <td>{fmtTime(event.created_at)}</td>
+                              <td>
+                                <div className="event-title">{event.title}</div>
+                                <div className="event-subtitle">{event.camera_code || "Камера не указана"} · {sourceBadge(event.source)}</div>
+                              </td>
+                              <td>
+                                <div className="event-title">{event.station_name}</div>
+                                <div className="event-subtitle">{event.station_code}</div>
+                              </td>
+                              <td>{severityBadge(event.severity)}</td>
+                              <td>{statusBadge(event.status)}</td>
+                              <td className="row-action">→</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="empty-cell">
+                              События не найдены
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                </aside>
+                </section>
 
-                <section className="cockpit-stage card">
+                <aside className="ops-detail card">
                   {activeEvent ? (
                     <>
-                      <div className="stage-header">
-                        <div>
-                          <span className="eyebrow compact">Event #{activeEvent.id}</span>
-                          <h2>{activeEvent.title}</h2>
-                          <p>{activeEvent.station_name} · {activeEvent.camera_code || "Камера не указана"}</p>
-                        </div>
+                      <div className="ops-detail-head">
+                        <span className="eyebrow compact">Event #{activeEvent.id}</span>
+                        <h2>{activeEvent.title}</h2>
                         <div className="detail-status-stack">
                           {statusBadge(activeEvent.status)}
                           {severityBadge(activeEvent.severity)}
                         </div>
                       </div>
 
-                      <div className="stage-media">
-                        <div className="stage-media-icon">GV</div>
-                        <div>
-                          <span>Медиа контекст</span>
-                          <b>{compactMediaLabel(activeEvent)}</b>
-                          <p>{activeEvent.preview_image_url || activeEvent.clip_url || "Файлы пока не прикреплены"}</p>
-                        </div>
-                      </div>
-
-                      <div className="stage-grid">
-                        <div>
-                          <span>Создано</span>
-                          <b>{fmtDateTime(activeEvent.created_at)}</b>
-                        </div>
-                        <div>
-                          <span>Источник</span>
-                          <b>{activeEvent.source.toUpperCase()}</b>
-                        </div>
+                      <div className="ops-detail-grid">
                         <div>
                           <span>Станция</span>
-                          <b>{activeEvent.station_code}</b>
+                          <b>{activeEvent.station_name}</b>
+                          <small>{activeEvent.station_code}</small>
+                        </div>
+                        <div>
+                          <span>Камера</span>
+                          <b>{activeEvent.camera_code || "Не указана"}</b>
+                        </div>
+                        <div>
+                          <span>Медиа</span>
+                          <b>{compactMediaLabel(activeEvent)}</b>
                         </div>
                         <div>
                           <span>Оператор</span>
                           <b>{activeEvent.last_status_changed_by_name || "Не назначен"}</b>
                         </div>
                       </div>
+
+                      <div className="ops-media-strip">
+                        {activeEvent.preview_image_url || activeEvent.clip_url || "Медиа пока не прикреплены"}
+                      </div>
+
+                      <div className="ops-actions">
+                        <button
+                          className={`btn secondary status-btn ${activeEvent.status === "open" ? "active" : ""}`}
+                          onClick={() => handleStatusChange("open")}
+                        >
+                          Открыт
+                        </button>
+                        <button
+                          className={`btn secondary status-btn ${activeEvent.status === "in_work" ? "active" : ""}`}
+                          onClick={() => handleStatusChange("in_work")}
+                        >
+                          В работе
+                        </button>
+                        <button
+                          className={`btn secondary status-btn ${activeEvent.status === "resolved" ? "active" : ""}`}
+                          onClick={() => handleStatusChange("resolved")}
+                        >
+                          Решён
+                        </button>
+                        <button
+                          className={`btn secondary status-btn ${activeEvent.status === "false_alarm" ? "active" : ""}`}
+                          onClick={() => handleStatusChange("false_alarm")}
+                        >
+                          Ложное
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <div className="empty-state">События не найдены</div>
                   )}
-                </section>
-
-                <aside className="cockpit-actions">
-                  <div className="card action-card">
-                    <div className="card-header">
-                      <h2>Быстрый статус</h2>
-                    </div>
-                    <div className="card-body action-row action-grid">
-                      <button
-                        className={`btn secondary status-btn ${activeEvent?.status === "open" ? "active" : ""}`}
-                        disabled={!activeEvent}
-                        onClick={() => handleStatusChange("open")}
-                      >
-                        Открыт
-                      </button>
-                      <button
-                        className={`btn secondary status-btn ${activeEvent?.status === "in_work" ? "active" : ""}`}
-                        disabled={!activeEvent}
-                        onClick={() => handleStatusChange("in_work")}
-                      >
-                        В работе
-                      </button>
-                      <button
-                        className={`btn secondary status-btn ${activeEvent?.status === "resolved" ? "active" : ""}`}
-                        disabled={!activeEvent}
-                        onClick={() => handleStatusChange("resolved")}
-                      >
-                        Решён
-                      </button>
-                      <button
-                        className={`btn secondary status-btn ${activeEvent?.status === "false_alarm" ? "active" : ""}`}
-                        disabled={!activeEvent}
-                        onClick={() => handleStatusChange("false_alarm")}
-                      >
-                        Ложное
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="card cockpit-metrics">
-                    <div>
-                      <span>24 часа</span>
-                      <b>{summary?.events_24h ?? 0}</b>
-                    </div>
-                    <div>
-                      <span>Открыто</span>
-                      <b>{openEventsCount}</b>
-                    </div>
-                    <div>
-                      <span>Станции онлайн</span>
-                      <b>{onlineStationsCount}/{stations.length}</b>
-                    </div>
-                    <div>
-                      <span>AI / CV</span>
-                      <b>{summary?.ai_24h ?? 0}/{summary?.cv_24h ?? 0}</b>
-                    </div>
-                  </div>
                 </aside>
               </div>
             </section>
