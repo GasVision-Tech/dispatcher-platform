@@ -214,6 +214,9 @@ export default function App() {
     () => stations.map((station) => ({ value: station.station_code, label: station.name })),
     [stations]
   );
+  const openEventsCount = historyEvents.filter((event) => event.status === "open").length;
+  const inWorkEventsCount = historyEvents.filter((event) => event.status === "in_work").length;
+  const onlineStationsCount = stations.filter((station) => station.status === "online").length;
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -307,8 +310,8 @@ export default function App() {
         <div className="hdr-left">
           <div className="logo small">GV</div>
           <div>
-            <div className="hdr-title">gasvision.ru</div>
-            <div className="hdr-sub">CV события и эскалации AI-чата в одной панели</div>
+            <div className="hdr-title">GasVision Command Center</div>
+            <div className="hdr-sub">Единая рабочая панель диспетчера</div>
           </div>
         </div>
         <div className="hdr-right">
@@ -332,18 +335,27 @@ export default function App() {
       <div className="layout">
         <aside className="sidebar">
           <div className={`nav-item ${page === "dashboard" ? "active" : ""}`} onClick={() => setPage("dashboard")}>
-            <span>Дашборд</span>
+            <span className="nav-copy">
+              <b>Дашборд</b>
+              <small>Оперативная очередь</small>
+            </span>
             <span className="nav-badge">{dashboardEvents.length}</span>
           </div>
           <div className={`nav-item ${page === "history" ? "active" : ""}`} onClick={() => setPage("history")}>
-            <span>История</span>
+            <span className="nav-copy">
+              <b>История</b>
+              <small>Архив и фильтры</small>
+            </span>
             <span className="nav-badge">{historyEvents.length}</span>
           </div>
           <div className={`nav-item ${page === "stations" ? "active" : ""}`} onClick={() => setPage("stations")}>
-            <span>Станции</span>
+            <span className="nav-copy">
+              <b>Станции</b>
+              <small>Доступные объекты</small>
+            </span>
             <span className="nav-badge">{stations.length}</span>
           </div>
-          <div className="nav-foot">MVP: login, events, detail, stations.</div>
+          <div className="nav-foot">Production design preview</div>
         </aside>
 
         <main className="main">
@@ -351,20 +363,34 @@ export default function App() {
 
           {page === "dashboard" ? (
             <section className="page active">
+              <div className="page-heading">
+                <div>
+                  <span className="eyebrow compact">Live operations</span>
+                  <h1>Оперативная сводка</h1>
+                  <p>Новые события, критичность и очередь действий по доступным станциям.</p>
+                </div>
+                <div className="page-heading-side">
+                  <span className="meta">В работе</span>
+                  <b>{inWorkEventsCount}</b>
+                </div>
+              </div>
+
               <div className="kpi-row">
-                <div className="kpi">
+                <div className="kpi kpi-primary">
                   <div className="label">Событий за 24 часа</div>
                   <div className="value">{summary?.events_24h ?? 0}</div>
                 </div>
                 <div className="kpi">
-                  <div className="label">CV за 24 часа</div>
-                  <div className="value">{summary?.cv_24h ?? 0}</div>
+                  <div className="label">Открытые события</div>
+                  <div className="value">{openEventsCount}</div>
                 </div>
                 <div className="kpi">
-                  <div className="label">AI за 24 часа</div>
-                  <div className="value">{summary?.ai_24h ?? 0}</div>
+                  <div className="label">Станции онлайн</div>
+                  <div className="value">
+                    {onlineStationsCount}<span>/{stations.length}</span>
+                  </div>
                 </div>
-                <div className="kpi">
+                <div className="kpi kpi-danger">
                   <div className="label">Высокая критичность</div>
                   <div className="value">{summary?.high_24h ?? 0}</div>
                 </div>
@@ -372,8 +398,10 @@ export default function App() {
 
               <div className="card table-card">
                 <div className="card-header">
-                  <h2>Список событий</h2>
-                  <div className="meta">Последние 15 событий</div>
+                  <div>
+                    <h2>Оперативная очередь</h2>
+                    <div className="meta">Последние 15 событий</div>
+                  </div>
                 </div>
                 <div className="card-body toolbar">
                   <input
@@ -414,11 +442,21 @@ export default function App() {
                     <tbody>
                       {dashboardEvents.length ? (
                         dashboardEvents.map((event) => (
-                          <tr key={event.id} className="clickable table-row" onClick={() => openEvent(event.id, "event")}>
+                          <tr
+                            key={event.id}
+                            className={`clickable table-row severity-row-${event.severity}`}
+                            onClick={() => openEvent(event.id, "event")}
+                          >
                             <td>{fmtTime(event.created_at)}</td>
                             <td>{sourceBadge(event.source)}</td>
-                            <td>{event.title}</td>
-                            <td>{event.station_name}</td>
+                            <td>
+                              <div className="event-title">{event.title}</div>
+                              <div className="event-subtitle">{event.camera_code || "Камера не указана"}</div>
+                            </td>
+                            <td>
+                              <div className="event-title">{event.station_name}</div>
+                              <div className="event-subtitle">{event.station_code}</div>
+                            </td>
                             <td>{severityBadge(event.severity)}</td>
                             <td className="row-action">→</td>
                           </tr>
@@ -439,10 +477,20 @@ export default function App() {
 
           {page === "history" ? (
             <section className="page active">
+              <div className="page-heading">
+                <div>
+                  <span className="eyebrow compact">Archive</span>
+                  <h1>История событий</h1>
+                  <p>Поиск и фильтрация по доступным станциям, источникам и уровню критичности.</p>
+                </div>
+              </div>
+
               <div className="card table-card">
                 <div className="card-header">
-                  <h2>История событий</h2>
-                  <div className="meta">Фильтрация по доступным станциям</div>
+                  <div>
+                    <h2>Журнал событий</h2>
+                    <div className="meta">Фильтрация по доступным станциям</div>
+                  </div>
                 </div>
                 <div className="card-body toolbar">
                   <input
@@ -495,11 +543,21 @@ export default function App() {
                     <tbody>
                       {historyEvents.length ? (
                         historyEvents.map((event) => (
-                          <tr key={event.id} className="clickable table-row" onClick={() => openEvent(event.id, "event")}>
+                          <tr
+                            key={event.id}
+                            className={`clickable table-row severity-row-${event.severity}`}
+                            onClick={() => openEvent(event.id, "event")}
+                          >
                             <td>{fmtDateTime(event.created_at)}</td>
                             <td>{sourceBadge(event.source)}</td>
-                            <td>{event.title}</td>
-                            <td>{event.station_name}</td>
+                            <td>
+                              <div className="event-title">{event.title}</div>
+                              <div className="event-subtitle">{event.camera_code || "Камера не указана"}</div>
+                            </td>
+                            <td>
+                              <div className="event-title">{event.station_name}</div>
+                              <div className="event-subtitle">{event.station_code}</div>
+                            </td>
                             <td>{severityBadge(event.severity)}</td>
                             <td>{statusBadge(event.status)}</td>
                             <td className="row-action">→</td>
@@ -521,6 +579,14 @@ export default function App() {
 
           {page === "stations" ? (
             <section className="page active">
+              <div className="page-heading">
+                <div>
+                  <span className="eyebrow compact">Network</span>
+                  <h1>Станции</h1>
+                  <p>Объекты, доступные текущему диспетчеру.</p>
+                </div>
+              </div>
+
               <div className="card">
                 <div className="card-header">
                   <h2>Подключенные станции</h2>
@@ -555,12 +621,17 @@ export default function App() {
               </div>
               <div className="detail-grid">
                 <div className="detail-left">
-                  <div className="card">
-                    <div className="card-header">
+                  <div className="card detail-hero">
+                    <div className="card-header detail-hero-header">
                       <div>
+                        <span className="eyebrow compact">Event #{selectedEvent.id}</span>
                         <h2>{selectedEvent.title}</h2>
+                        <div className="meta">{selectedEvent.station_name} · {selectedEvent.camera_code || "Камера не указана"}</div>
                       </div>
-                      <div className="meta">{fmtDateTime(selectedEvent.created_at)}</div>
+                      <div className="detail-status-stack">
+                        {statusBadge(selectedEvent.status)}
+                        {severityBadge(selectedEvent.severity)}
+                      </div>
                     </div>
                     <div className="card-body">
                       <div className="kv">
@@ -578,6 +649,8 @@ export default function App() {
                         <div>{statusBadge(selectedEvent.status)}</div>
                         <div className="k">Последний оператор</div>
                         <div>{selectedEvent.last_status_changed_by_name || "Статус ещё не меняли"}</div>
+                        <div className="k">Создано</div>
+                        <div>{fmtDateTime(selectedEvent.created_at)}</div>
                       </div>
                     </div>
                   </div>

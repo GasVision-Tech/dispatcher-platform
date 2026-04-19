@@ -53,7 +53,7 @@ services:
       database_url: postgresql+psycopg2://bff_user:bff_pass@bff-db:5432/bff_db
       jwt_secret: dev-secret-key
       event_service_base_url: http://event-service:8000
-      cors_origins: http://localhost,http://127.0.0.1
+      cors_origins: http://localhost,http://127.0.0.1,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080
     ports:
       - "8010:8010"
     depends_on:
