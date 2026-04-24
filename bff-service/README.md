@@ -17,12 +17,14 @@ MVP BFF для панели диспетчера.
 
 ```bash
 cd ../../Event-service
+cp .env.example .env
 docker compose up --build
 ```
 
 Затем из папки `bff-service`:
 
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
 
@@ -44,6 +46,8 @@ uvicorn app.main:app --reload --port 8010
 ```
 
 В контейнере BFF по умолчанию используется внешний `event-service` по адресу `http://host.docker.internal:8000`.
+
+Шаблон переменных приложения лежит в [`.env.example`](/Users/nikitakomarov/Desktop/GasVision/develop/dispatcher-platform/bff-service/.env.example).
 
 ## Демо-доступ
 

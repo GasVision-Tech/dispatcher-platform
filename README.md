@@ -17,12 +17,14 @@
 
 ```bash
 cd ../Event-service
+cp .env.example .env
 docker compose up --build
 ```
 
 2. Затем подними саму платформу из папки `dispatcher-platform`:
 
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
 
@@ -46,6 +48,8 @@ make up
 ```bash
 EVENT_SERVICE_BASE_URL=http://<host>:8000 docker compose up --build
 ```
+
+Для постоянной локальной настройки можно сохранить это значение в [`.env.example`](/dispatcher-platform/.env.example) по образцу `.env`.
 
 ## Полезные команды
 
