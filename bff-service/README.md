@@ -13,20 +13,37 @@ MVP BFF для панели диспетчера.
 
 ## Запуск
 
-Из папки `BFF-service`:
+Сначала подними внешний `event-service`:
 
 ```bash
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8010
+cd ../../Event-service
+docker compose up --build
 ```
 
-Или через Docker:
+Затем из папки `bff-service`:
 
 ```bash
 docker compose up --build
 ```
 
-По умолчанию BFF ожидает `event-service` на `http://localhost:8000`.
+Этот compose поднимает только BFF и его собственную Postgres БД.
+
+Если `event-service` доступен не на локальной машине, переопредели адрес:
+
+```bash
+EVENT_SERVICE_BASE_URL=http://<host>:8000 docker compose up --build
+```
+
+Для запуска без Docker нужно передать внешний `database_url` и адрес `event-service`:
+
+```bash
+pip install -r requirements.txt
+database_url=postgresql+psycopg2://bff_user:bff_pass@localhost:5434/bff_db \
+event_service_base_url=http://localhost:8000 \
+uvicorn app.main:app --reload --port 8010
+```
+
+В контейнере BFF по умолчанию используется внешний `event-service` по адресу `http://host.docker.internal:8000`.
 
 ## Демо-доступ
 

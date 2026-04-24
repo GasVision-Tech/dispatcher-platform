@@ -2,20 +2,25 @@
 
 Отдельный контур для панели диспетчера и BFF.
 
-`event-service` остается самостоятельным сервисом и подключается как соседний репозиторий из `../Event-service`.
+`event-service` запускается отдельно как внешний сервис и подключается в BFF по `EVENT_SERVICE_BASE_URL`.
 
 Состав платформы:
 
-- `event-service`
 - `bff`
 - `frontend`
 - `nginx`
-- `event-db`
 - `bff-db`
 
 ## Как запускать
 
-Из папки `dispatcher-platform`:
+1. Сначала подними `event-service` из соседнего репозитория:
+
+```bash
+cd ../Event-service
+docker compose up --build
+```
+
+2. Затем подними саму платформу из папки `dispatcher-platform`:
 
 ```bash
 docker compose up --build
@@ -30,10 +35,17 @@ make up
 После старта:
 
 - общий вход через NGINX: `http://localhost:8080`
-- Swagger `event-service`: `http://localhost:8000/docs`
+- Swagger внешнего `event-service`: `http://localhost:8000/docs`
 - Swagger `bff`: `http://localhost:8010/docs`
 - BFF внутри сети docker: `http://bff:8010`
-- Event Service внутри сети docker: `http://event-service:8000`
+- Event Service для BFF: `http://host.docker.internal:8000` внутри контейнера BFF
+- Event Service с хоста: `http://localhost:8000`
+
+Если `event-service` доступен не на локальной машине, переопредели адрес:
+
+```bash
+EVENT_SERVICE_BASE_URL=http://<host>:8000 docker compose up --build
+```
 
 ## Полезные команды
 
@@ -77,7 +89,7 @@ make smoke-seed
 - browser -> `nginx`
 - `nginx /` -> `frontend`
 - `nginx /api` -> `bff`
-- `bff` -> `event-service`
+- `bff` -> внешний `event-service`
 
 ## Демо-доступ
 

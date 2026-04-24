@@ -1,11 +1,36 @@
 services:
+  bff-db:
+    image: postgres:16
+    container_name: gasvision_bff_db_local
+    environment:
+      - POSTGRES_USER=bff_user
+      - POSTGRES_PASSWORD=bff_pass
+      - POSTGRES_DB=bff_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - bff_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bff_user -d bff_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
   bff:
     build: .
     container_name: gasvision_bff
     environment:
-      - database_url=sqlite:///./bff.db
+      - database_url=postgresql+psycopg2://bff_user:bff_pass@bff-db:5432/bff_db
       - jwt_secret=dev-secret-key
-      - event_service_base_url=http://host.docker.internal:8000
+      - event_service_base_url=${EVENT_SERVICE_BASE_URL:-http://host.docker.internal:8000}
       - cors_origins=http://localhost:5173,http://127.0.0.1:5173
     ports:
       - "8010:8010"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      bff-db:
+        condition: service_healthy
+
+volumes:
+  bff_pgdata:
