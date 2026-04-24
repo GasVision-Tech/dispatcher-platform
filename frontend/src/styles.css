@@ -613,6 +613,45 @@ th {
   word-break: break-word;
 }
 
+.media-preview {
+  width: 100%;
+  display: block;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 143, 111, 0.12);
+  background: #e8f3ef;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  margin-bottom: 10px;
+}
+
+.media-placeholder {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px dashed var(--border);
+  background: linear-gradient(180deg, #ffffff, #f3f7f4);
+  color: var(--muted);
+  text-align: center;
+  padding: 16px;
+  margin-bottom: 10px;
+}
+
+.media-preview-fallback {
+  margin-bottom: 10px;
+}
+
+.media-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.media-link:hover {
+  text-decoration: underline;
+}
+
 .empty-state {
   padding: 18px;
   border: 1px dashed var(--border);

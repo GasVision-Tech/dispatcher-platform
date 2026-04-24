@@ -56,6 +56,51 @@ function statusBadge(status) {
   return <span className={`badge status-pill status-${status}`}>{statusLabel(status)}</span>;
 }
 
+function isPreviewableUrl(value) {
+  return typeof value === "string" && /^(https?:|data:|blob:)/i.test(value);
+}
+
+function mediaLink(url, label = "Открыть файл") {
+  if (!isPreviewableUrl(url)) {
+    return null;
+  }
+
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="media-link">
+      {label}
+    </a>
+  );
+}
+
+function mediaPlaceholder(kind, hasUrl = false) {
+  const labels = {
+    image: hasUrl ? "Изображение недоступно" : "Ожидаем изображение",
+    clip: hasUrl ? "Клип недоступен" : "Ожидаем клип"
+  };
+
+  return <div className="media-placeholder">{labels[kind] || "Файл недоступен"}</div>;
+}
+
+function renderMediaPreview(kind, url, title) {
+  if (!url) {
+    return mediaPlaceholder(kind, false);
+  }
+
+  if (!isPreviewableUrl(url)) {
+    return mediaPlaceholder(kind, true);
+  }
+
+  if (kind === "image") {
+    return <img className="media-preview" src={url} alt={title} loading="lazy" />;
+  }
+
+  if (kind === "clip") {
+    return <video className="media-preview" src={url} controls preload="metadata" playsInline />;
+  }
+
+  return mediaLink(url);
+}
+
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem("gv_token"));
   const [user, setUser] = useState(null);
@@ -590,12 +635,14 @@ export default function App() {
                       {selectedEvent.preview_image_url || selectedEvent.clip_url ? (
                         <div className="media-summary-grid">
                           <div className="media-summary-card">
-                            <div className="media-summary-label">Preview image</div>
-                            <div className="media-summary-value">{selectedEvent.preview_image_url || "Не прикреплено"}</div>
+                            <div className="media-summary-label">Изображение</div>
+                            {renderMediaPreview("image", selectedEvent.preview_image_url, selectedEvent.title)}
+                            {selectedEvent.preview_image_url ? mediaLink(selectedEvent.preview_image_url, "Открыть изображение") : null}
                           </div>
                           <div className="media-summary-card">
-                            <div className="media-summary-label">Clip</div>
-                            <div className="media-summary-value">{selectedEvent.clip_url || "Ещё не готов"}</div>
+                            <div className="media-summary-label">Клип</div>
+                            {renderMediaPreview("clip", selectedEvent.clip_url, selectedEvent.title)}
+                            {selectedEvent.clip_url ? mediaLink(selectedEvent.clip_url, "Открыть клип") : null}
                           </div>
                         </div>
                       ) : (
@@ -645,8 +692,9 @@ export default function App() {
                         <div className="media-grid">
                           {selectedEvent.media.map((item, index) => (
                             <div key={`${item.kind}-${index}`} className="media-item">
-                              <div className="media-kind">{item.kind}</div>
-                              <div className="media-url">{item.s3_url}</div>
+                              <div className="media-kind">{item.kind === "image" ? "Изображение" : "Клип"}</div>
+                              {renderMediaPreview(item.kind, item.s3_url, `${selectedEvent.title} ${item.kind}`)}
+                              {mediaLink(item.s3_url)}
                             </div>
                           ))}
                         </div>
