@@ -28,23 +28,28 @@ app.include_router(events_router)
 
 
 def seed_data() -> None:
+    if not settings.seed_demo_data:
+        return
+    if not settings.demo_dispatcher_email or not settings.demo_dispatcher_password:
+        raise RuntimeError("demo dispatcher credentials are required when seed_demo_data is enabled")
+
     db = SessionLocal()
     try:
         if db.query(User).count() == 0:
             user_1 = User(
-                email="dispatcher1@gasvision.local",
-                password_hash=hash_password("demo123"),
+                email=settings.demo_dispatcher_email,
+                password_hash=hash_password(settings.demo_dispatcher_password),
                 full_name="Иванов И.",
                 telegram_username="@ivanov_dispatch",
             )
             user_2 = User(
                 email="dispatcher2@gasvision.local",
-                password_hash=hash_password("demo123"),
+                password_hash=hash_password(settings.demo_dispatcher_password),
                 full_name="Петров П.",
                 telegram_username=None,
             )
 
-            station_1 = Station(station_code="azs_001", name="АЗС #101", location="Казань, пр-т Победы", status="online")
+            station_1 = Station(station_code="AZS-001", name="АЗС #101", location="Казань, пр-т Победы", status="online")
             station_2 = Station(station_code="azs_002", name="АЗС #102", location="Казань, ул. Чистопольская", status="warn")
             station_3 = Station(station_code="azs_003", name="АЗС #103", location="Казань, Оренбургский тракт", status="online")
             station_4 = Station(station_code="azs_004", name="АЗС #104", location="Казань, ул. Декабристов", status="offline")

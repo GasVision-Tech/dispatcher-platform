@@ -97,5 +97,5 @@ make smoke-seed
 
 ## Демо-доступ
 
-- email: `dispatcher1@gasvision.local`
-- password: `demo123`
+- email задается через `BFF_DEMO_DISPATCHER_EMAIL`
+- password задается через `BFF_DEMO_DISPATCHER_PASSWORD`

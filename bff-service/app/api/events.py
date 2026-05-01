@@ -38,6 +38,39 @@ def _user_map_for_events(db: Session, events: list[dict]) -> dict[int, User]:
     return {user.id: user for user in users}
 
 
+# def _adapt_event(event: dict, station_map: dict[str, Station], user_map: dict[int, User]) -> EventListItem:
+#     station = station_map.get(event["station_code"])
+#     user_id_who_changed_status = event.get("user_id_who_changed_status")
+#     last_status_changed_by_name = None
+#     if user_id_who_changed_status is not None:
+#         user = user_map.get(user_id_who_changed_status)
+#         last_status_changed_by_name = user.full_name if user else f"User #{user_id_who_changed_status}"
+#     preview_image_url = None
+#     clip_url = None
+#     media = event.get("media", [])
+#     for item in media:
+#         if item["kind"] == "image" and preview_image_url is None:
+#             preview_image_url = item["s3_url"]
+#         if item["kind"] == "clip" and clip_url is None:
+#             clip_url = item["s3_url"]
+
+#     return EventListItem(
+#         id=event["id"],
+#         source=event["source"],
+#         title=event["title"],
+#         station_code=event["station_code"],
+#         station_name=station.name if station else event["station_code"],
+#         camera_code=event.get("camera_code"),
+#         severity=event["severity"],
+#         status=event["status"],
+#         created_at=event["created_at"],
+#         updated_at=event["updated_at"],
+#         preview_image_url=preview_image_url,
+#         clip_url=clip_url,
+#         last_status_changed_by_name=last_status_changed_by_name,
+#     )
+
+
 def _adapt_event(event: dict, station_map: dict[str, Station], user_map: dict[int, User]) -> EventListItem:
     station = station_map.get(event["station_code"])
     user_id_who_changed_status = event.get("user_id_who_changed_status")
@@ -45,10 +78,10 @@ def _adapt_event(event: dict, station_map: dict[str, Station], user_map: dict[in
     if user_id_who_changed_status is not None:
         user = user_map.get(user_id_who_changed_status)
         last_status_changed_by_name = user.full_name if user else f"User #{user_id_who_changed_status}"
+
     preview_image_url = None
     clip_url = None
-    media = event.get("media", [])
-    for item in media:
+    for item in event.get("media", []):
         if item["kind"] == "image" and preview_image_url is None:
             preview_image_url = item["s3_url"]
         if item["kind"] == "clip" and clip_url is None:
@@ -106,6 +139,21 @@ async def list_events(
         ]
     return items
 
+
+# @router.get("/api/events/{event_id}", response_model=EventDetail)
+# async def get_event(
+#     event_id: int,
+#     current_user: User = Depends(get_current_user),
+#     db: Session = Depends(get_db),
+# ):
+#     station_map = _station_map_for_user(db, current_user.id)
+#     event = await event_service_client.get_event(event_id)
+#     if event["station_code"] not in station_map:
+#         raise HTTPException(status_code=404, detail="event not found")
+
+#     user_map = _user_map_for_events(db, [event])
+#     base = _adapt_event(event, station_map, user_map)
+#     return EventDetail(**base.model_dump(), media=event.get("media", []))
 
 @router.get("/api/events/{event_id}", response_model=EventDetail)
 async def get_event(

@@ -3,15 +3,15 @@ services:
     image: postgres:16
     container_name: gasvision_bff_db_local
     environment:
-      - POSTGRES_USER=bff_user
-      - POSTGRES_PASSWORD=bff_pass
-      - POSTGRES_DB=bff_db
+      - POSTGRES_USER=${BFF_DB_USER:?BFF_DB_USER is required}
+      - POSTGRES_PASSWORD=${BFF_DB_PASSWORD:?BFF_DB_PASSWORD is required}
+      - POSTGRES_DB=${BFF_DB_NAME:?BFF_DB_NAME is required}
     ports:
       - "5434:5432"
     volumes:
       - bff_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bff_user -d bff_db"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -20,10 +20,15 @@ services:
     build: .
     container_name: gasvision_bff
     environment:
-      - database_url=postgresql+psycopg2://bff_user:bff_pass@bff-db:5432/bff_db
-      - jwt_secret=dev-secret-key
-      - event_service_base_url=${EVENT_SERVICE_BASE_URL:-http://host.docker.internal:8000}
-      - cors_origins=http://localhost:5173,http://127.0.0.1:5173
+      - database_url=postgresql+psycopg2://${BFF_DB_USER:?BFF_DB_USER is required}:${BFF_DB_PASSWORD:?BFF_DB_PASSWORD is required}@bff-db:5432/${BFF_DB_NAME:?BFF_DB_NAME is required}
+      - jwt_secret=${BFF_JWT_SECRET:?BFF_JWT_SECRET is required}
+      - jwt_algorithm=${BFF_JWT_ALGORITHM:-HS256}
+      - access_token_expire_minutes=${BFF_ACCESS_TOKEN_EXPIRE_MINUTES:-720}
+      - event_service_base_url=${EVENT_SERVICE_BASE_URL:?EVENT_SERVICE_BASE_URL is required}
+      - cors_origins=${BFF_CORS_ORIGINS:?BFF_CORS_ORIGINS is required}
+      - seed_demo_data=${BFF_SEED_DEMO_DATA:-false}
+      - demo_dispatcher_email=${BFF_DEMO_DISPATCHER_EMAIL:-}
+      - demo_dispatcher_password=${BFF_DEMO_DISPATCHER_PASSWORD:-}
     ports:
       - "8010:8010"
     extra_hosts:

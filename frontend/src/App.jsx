@@ -11,8 +11,8 @@ import {
 } from "./api";
 
 const demoCredentials = {
-  email: "dispatcher1@gasvision.local",
-  password: "demo123"
+  email: import.meta.env.VITE_DEMO_EMAIL || "",
+  password: import.meta.env.VITE_DEMO_PASSWORD || ""
 };
 
 const AUTO_REFRESH_MS = 5000;
@@ -309,7 +309,6 @@ export default function App() {
             <div className="brand-copy">
               <span className="eyebrow">Dispatcher Platform</span>
               <h1>gasvision.ru — Панель диспетчера</h1>
-              <p>Дружелюбная рабочая панель для просмотра событий, смены статусов и быстрой реакции без лишних переходов.</p>
             </div>
           </div>
 
@@ -319,7 +318,7 @@ export default function App() {
               <input
                 value={loginForm.email}
                 onChange={(event) => setLoginForm((state) => ({ ...state, email: event.target.value }))}
-                placeholder="dispatcher1@gasvision.local"
+                placeholder="Введите email"
               />
             </div>
             <div className="field">
@@ -328,7 +327,7 @@ export default function App() {
                 type="password"
                 value={loginForm.password}
                 onChange={(event) => setLoginForm((state) => ({ ...state, password: event.target.value }))}
-                placeholder="demo123"
+                placeholder="Введите пароль"
               />
             </div>
             <div className="row">
@@ -353,7 +352,6 @@ export default function App() {
           <div className="logo small">GV</div>
           <div>
             <div className="hdr-title">gasvision.ru</div>
-            <div className="hdr-sub">CV события и эскалации AI-чата в одной панели</div>
           </div>
         </div>
         <div className="hdr-right">
@@ -388,7 +386,6 @@ export default function App() {
             <span>Станции</span>
             <span className="nav-badge">{stations.length}</span>
           </div>
-          <div className="nav-foot">MVP: login, events, detail, stations.</div>
         </aside>
 
         <main className="main">
@@ -453,6 +450,7 @@ export default function App() {
                         <th>Описание</th>
                         <th>Станция</th>
                         <th>Критичность</th>
+                        <th>Статус</th>
                         <th />
                       </tr>
                     </thead>
@@ -465,12 +463,13 @@ export default function App() {
                             <td>{event.title}</td>
                             <td>{event.station_name}</td>
                             <td>{severityBadge(event.severity)}</td>
+                            <td>{statusBadge(event.status)}</td>
                             <td className="row-action">→</td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="6" className="empty-cell">
+                          <td colSpan="7" className="empty-cell">
                             События не найдены
                           </td>
                         </tr>

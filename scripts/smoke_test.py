@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.parse
@@ -113,8 +114,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Smoke test for dispatcher platform")
     parser.add_argument("--event-service-url", default="http://localhost:8000")
     parser.add_argument("--bff-url", default="http://localhost:8010")
-    parser.add_argument("--email", default="dispatcher1@gasvision.local")
-    parser.add_argument("--password", default="demo123")
+    parser.add_argument("--email", default=os.getenv("BFF_DEMO_DISPATCHER_EMAIL", "dispatcher1@gasvision.ru"))
+    parser.add_argument("--password", default=os.getenv("BFF_DEMO_DISPATCHER_PASSWORD", ""))
     parser.add_argument("--station-code", default="azs_001")
     parser.add_argument("--create-event", action="store_true")
     return parser

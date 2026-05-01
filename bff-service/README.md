@@ -40,7 +40,7 @@ EVENT_SERVICE_BASE_URL=http://<host>:8000 docker compose up --build
 
 ```bash
 pip install -r requirements.txt
-database_url=postgresql+psycopg2://bff_user:bff_pass@localhost:5434/bff_db \
+database_url=postgresql+psycopg2://bff_user:<password>@localhost:5434/bff_db \
 event_service_base_url=http://localhost:8000 \
 uvicorn app.main:app --reload --port 8010
 ```
@@ -51,10 +51,10 @@ uvicorn app.main:app --reload --port 8010
 
 ## Демо-доступ
 
-- email: `dispatcher1@gasvision.local`
-- password: `demo123`
+- email задается через `demo_dispatcher_email`
+- password задается через `demo_dispatcher_password`
 
 Также сидится второй пользователь:
 
 - email: `dispatcher2@gasvision.local`
-- password: `demo123`
+- password задается через `demo_dispatcher_password`
