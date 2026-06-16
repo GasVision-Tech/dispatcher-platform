@@ -123,7 +123,7 @@ async def list_events(
         station_codes=allowed_station_codes,
         status=status,
         severity=severity,
-        limit=200,
+        limit=1000,
         offset=0,
     )
 
