@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8010").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 
 function getToken() {
   return localStorage.getItem("gv_token");
@@ -69,5 +69,12 @@ export async function patchEventStatus(id, status) {
   return request(`/events/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status })
+  });
+}
+
+export async function patchEventConfirmation(id, eventConfirmed) {
+  return request(`/events/${id}/confirmation`, {
+    method: "PATCH",
+    body: JSON.stringify({ event_confirmed: eventConfirmed })
   });
 }

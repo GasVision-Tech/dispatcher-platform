@@ -11,19 +11,17 @@ class EventServiceClient:
 
     async def list_events(self, station_codes: Iterable[str] | None = None, **filters):
         station_codes = list(station_codes or [])
-        merged_events = []
-
+        params = {k: v for k, v in filters.items() if v is not None}
         if station_codes:
-            for station_code in station_codes:
-                params = {k: v for k, v in filters.items() if v is not None}
-                params["station_code"] = station_code
-                station_events = await self._get("/v1/events", params=params)
-                merged_events.extend(station_events)
-        else:
-            merged_events = await self._get("/v1/events", params={k: v for k, v in filters.items() if v is not None})
+            params["station_codes"] = station_codes
 
-        unique = {event["id"]: event for event in merged_events}
-        return sorted(unique.values(), key=lambda item: item["created_at"], reverse=True)
+        data = await self._get("/v1/events", params=params)
+        if isinstance(data, list):
+            # Backward compatibility with older event-service deployments.
+            unique = {event["id"]: event for event in data}
+            events = sorted(unique.values(), key=lambda item: item["created_at"], reverse=True)
+            return {"items": events, "total": len(events), "limit": len(events), "offset": 0}
+        return data
 
     async def get_event(self, event_id: int):
         return await self._get(f"/v1/events/{event_id}")

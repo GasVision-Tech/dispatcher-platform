@@ -28,6 +28,9 @@ class EventListItem(BaseModel):
     camera_code: str | None
     severity: str
     status: str
+    event_confirmed: bool | None = None
+    event_confirmed_by_user_id: int | None = None
+    event_confirmed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     preview_image_url: str | None
@@ -41,6 +44,17 @@ class EventDetail(EventListItem):
 
 class EventStatusPatch(BaseModel):
     status: EventStatus
+
+
+class EventConfirmationPatch(BaseModel):
+    event_confirmed: bool | None
+
+
+class EventListResponse(BaseModel):
+    items: list[EventListItem]
+    total: int
+    limit: int
+    offset: int
 
 
 class DashboardSummary(BaseModel):

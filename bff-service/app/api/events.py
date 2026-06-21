@@ -8,7 +8,14 @@ from app.db.models.station import Station
 from app.db.models.user import User
 from app.db.models.user_station_access import UserStationAccess
 from app.db.session import SessionLocal, get_db
-from app.schemas.events import DashboardSummary, EventDetail, EventListItem, EventStatusPatch
+from app.schemas.events import (
+    DashboardSummary,
+    EventConfirmationPatch,
+    EventDetail,
+    EventListItem,
+    EventListResponse,
+    EventStatusPatch,
+)
 from app.services.event_service import event_service_client
 from app.services.notification_service import notify_dispatchers_about_event
 
@@ -105,6 +112,9 @@ def _adapt_event(event: dict, station_map: dict[str, Station], user_map: dict[in
         camera_code=event.get("camera_code"),
         severity=event["severity"],
         status=event["status"],
+        event_confirmed=event.get("event_confirmed"),
+        event_confirmed_by_user_id=event.get("event_confirmed_by_user_id"),
+        event_confirmed_at=event.get("event_confirmed_at"),
         created_at=event["created_at"],
         updated_at=event["updated_at"],
         preview_image_url=preview_image_url,
@@ -113,13 +123,16 @@ def _adapt_event(event: dict, station_map: dict[str, Station], user_map: dict[in
     )
 
 
-@router.get("/api/events", response_model=list[EventListItem])
+@router.get("/api/events", response_model=EventListResponse)
 async def list_events(
     source: str | None = None,
     status: str | None = None,
     severity: str | None = None,
     station_code: str | None = None,
     search: str | None = None,
+    event_confirmed: str | None = None,
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -128,25 +141,21 @@ async def list_events(
     if station_code and station_code in station_map:
         allowed_station_codes = [station_code]
 
-    raw_events = await event_service_client.list_events(
+    data = await event_service_client.list_events(
         station_codes=allowed_station_codes,
+        source=source,
         status=status,
         severity=severity,
-        limit=1000,
-        offset=0,
+        search=search,
+        event_confirmed=event_confirmed,
+        limit=limit,
+        offset=offset,
     )
+    raw_events = data["items"]
 
     user_map = _user_map_for_events(db, raw_events)
     items = [_adapt_event(event, station_map, user_map) for event in raw_events]
-    if source:
-        items = [item for item in items if item.source == source]
-    if search:
-        query = search.lower()
-        items = [
-            item for item in items
-            if query in f"{item.id} {item.title} {item.station_name} {item.station_code}".lower()
-        ]
-    return items
+    return EventListResponse(items=items, total=data["total"], limit=data["limit"], offset=data["offset"])
 
 
 @router.post("/v1/events")
@@ -222,13 +231,38 @@ async def patch_event_status(
     return EventDetail(**base.model_dump(), media=patched.get("media", []))
 
 
+@router.patch("/api/events/{event_id}/confirmation", response_model=EventDetail)
+async def patch_event_confirmation(
+    event_id: int,
+    payload: EventConfirmationPatch,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    station_map = _station_map_for_user(db, current_user.id)
+    existing = await event_service_client.get_event(event_id)
+    if existing["station_code"] not in station_map:
+        raise HTTPException(status_code=404, detail="event not found")
+
+    patched = await event_service_client.patch_event(
+        event_id,
+        {
+            "event_confirmed": payload.event_confirmed,
+            "event_confirmed_by_user_id": current_user.id,
+        },
+    )
+    user_map = _user_map_for_events(db, [patched])
+    base = _adapt_event(patched, station_map, user_map)
+    return EventDetail(**base.model_dump(), media=patched.get("media", []))
+
+
 @router.get("/api/dashboard/summary", response_model=DashboardSummary)
 async def dashboard_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     station_map = _station_map_for_user(db, current_user.id)
-    events = await event_service_client.list_events(station_codes=station_map.keys(), limit=200, offset=0)
+    data = await event_service_client.list_events(station_codes=station_map.keys(), limit=200, offset=0)
+    events = data["items"]
     now = datetime.now(timezone.utc)
     last_24h = now - timedelta(hours=24)
 

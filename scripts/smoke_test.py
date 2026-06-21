@@ -88,8 +88,10 @@ def run(args: argparse.Namespace) -> int:
             _, created = request_json("POST", f"{args.event_service_url}/v1/events", payload)
             print_ok(f"created smoke event id={created['id']} on station {created['station_code']}")
 
-        _, events = request_json("GET", f"{args.bff_url}/api/events", headers=auth_headers)
-        print_ok(f"loaded {len(events)} events via bff")
+        _, events_response = request_json("GET", f"{args.bff_url}/api/events", headers=auth_headers)
+        events = events_response["items"] if isinstance(events_response, dict) else events_response
+        total_events = events_response.get("total", len(events)) if isinstance(events_response, dict) else len(events)
+        print_ok(f"loaded {len(events)} events via bff (total={total_events})")
 
         if events:
             event_id = events[0]["id"]
