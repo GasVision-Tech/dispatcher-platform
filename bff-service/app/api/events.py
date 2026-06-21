@@ -1,15 +1,16 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
 from app.db.models.station import Station
 from app.db.models.user import User
 from app.db.models.user_station_access import UserStationAccess
-from app.db.session import get_db
+from app.db.session import SessionLocal, get_db
 from app.schemas.events import DashboardSummary, EventDetail, EventListItem, EventStatusPatch
 from app.services.event_service import event_service_client
+from app.services.notification_service import notify_dispatchers_about_event
 
 
 router = APIRouter(tags=["events"])
@@ -36,6 +37,14 @@ def _user_map_for_events(db: Session, events: list[dict]) -> dict[int, User]:
 
     users = db.query(User).filter(User.id.in_(user_ids)).all()
     return {user.id: user for user in users}
+
+
+def _notify_dispatchers_background(event: dict) -> None:
+    db = SessionLocal()
+    try:
+        notify_dispatchers_about_event(event, db)
+    finally:
+        db.close()
 
 
 # def _adapt_event(event: dict, station_map: dict[str, Station], user_map: dict[int, User]) -> EventListItem:
@@ -138,6 +147,24 @@ async def list_events(
             if query in f"{item.id} {item.title} {item.station_name} {item.station_code}".lower()
         ]
     return items
+
+
+@router.post("/v1/events")
+async def create_event_for_services(
+    background_tasks: BackgroundTasks,
+    payload: dict = Body(...),
+):
+    event = await event_service_client.create_event(payload)
+    background_tasks.add_task(_notify_dispatchers_background, event)
+    return event
+
+
+@router.post("/v1/events/{event_id}/media")
+async def add_event_media_for_services(
+    event_id: int,
+    payload: dict = Body(...),
+):
+    return await event_service_client.add_media(event_id, payload)
 
 
 # @router.get("/api/events/{event_id}", response_model=EventDetail)

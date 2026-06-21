@@ -28,6 +28,16 @@ services:
       seed_demo_data: ${BFF_SEED_DEMO_DATA:-false}
       demo_dispatcher_email: ${BFF_DEMO_DISPATCHER_EMAIL:-}
       demo_dispatcher_password: ${BFF_DEMO_DISPATCHER_PASSWORD:-}
+      mail_enabled: ${MAIL_ENABLED:-false}
+      mail_from: ${MAIL_FROM:-}
+      mail_subject_prefix: ${MAIL_SUBJECT_PREFIX:-GasVision}
+      dispatcher_event_base_url: ${DISPATCHER_EVENT_BASE_URL:-}
+      smtp_host: ${SMTP_HOST:-}
+      smtp_port: ${SMTP_PORT:-587}
+      smtp_username: ${SMTP_USERNAME:-}
+      smtp_password: ${SMTP_PASSWORD:-}
+      smtp_use_tls: ${SMTP_USE_TLS:-true}
+      notification_med_cooldown_minutes: ${NOTIFICATION_MED_COOLDOWN_MINUTES:-10}
     ports:
       - "8010:8010"
     extra_hosts:

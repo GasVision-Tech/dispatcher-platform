@@ -15,5 +15,18 @@ class Settings(BaseSettings):
     demo_dispatcher_email: str | None = None
     demo_dispatcher_password: str | None = None
 
+    mail_enabled: bool = False
+    mail_from: str | None = None
+    mail_subject_prefix: str = "GasVision"
+    dispatcher_event_base_url: str | None = None
+
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_use_tls: bool = True
+
+    notification_med_cooldown_minutes: int = 10
+
 
 settings = Settings()

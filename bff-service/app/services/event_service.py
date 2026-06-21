@@ -28,12 +28,24 @@ class EventServiceClient:
     async def get_event(self, event_id: int):
         return await self._get(f"/v1/events/{event_id}")
 
+    async def create_event(self, payload: dict):
+        return await self._post("/v1/events", json=payload)
+
+    async def add_media(self, event_id: int, payload: dict):
+        return await self._post(f"/v1/events/{event_id}/media", json=payload)
+
     async def patch_event(self, event_id: int, payload: dict):
         return await self._patch(f"/v1/events/{event_id}", json=payload)
 
     async def _get(self, path: str, **kwargs):
         async with httpx.AsyncClient(base_url=self.base_url, timeout=15.0) as client:
             response = await client.get(path, **kwargs)
+            response.raise_for_status()
+            return response.json()
+
+    async def _post(self, path: str, **kwargs):
+        async with httpx.AsyncClient(base_url=self.base_url, timeout=30.0) as client:
+            response = await client.post(path, **kwargs)
             response.raise_for_status()
             return response.json()
 

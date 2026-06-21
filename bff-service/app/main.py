@@ -7,6 +7,7 @@ from app.api.stations import router as stations_router
 from app.core.config import settings
 from app.core.security import hash_password
 from app.db.base import Base
+from app.db.models.notification_delivery import NotificationDelivery  # noqa: F401
 from app.db.models.station import Station
 from app.db.models.user import User
 from app.db.models.user_station_access import UserStationAccess
